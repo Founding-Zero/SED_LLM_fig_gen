@@ -1,29 +1,32 @@
 import os
+import random
+import csv
 import tempfile
 from collections import defaultdict
-
-import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import seaborn as sns
 import wandb
+from datetime import datetime, timedelta
+from figgen import DataAnalyzer
 from dotenv import load_dotenv
+
 
 class DataAnalyzer:
     def __init__(
         self,
         wandb_entity,
         wandb_projects,
-        min_length=100,
         color_scheme="viridis",
         export_to_wandb=False,
     ):
         load_dotenv()
         self.wandb_entity = wandb_entity
         self.wandb_project = wandb_projects
-        self.api_key = os.getenv["WANDB_API_KEY"]
+        self.api_key = os.getenv("WANDB_API_KEY")
         self.api = wandb.Api()
         self.histories = {}
-        self.min_length = min_length
         self.color_scheme = color_scheme
         self.export_to_wandb = export_to_wandb
         if self.export_to_wandb and self.api_key:
@@ -37,6 +40,27 @@ class DataAnalyzer:
             ]
         else:
             self.runs = self.api.runs(f"{self.wandb_entity}/{self.wandb_project}")
+        return self.runs
+
+    def get_runs_by_tag(self, tag):
+        # Query runs from the specified entity and project
+        runs = self.api.runs(f"{entity}/{project}")
+
+        # Collect run information with the specified tag
+        run_data = []
+        for run in runs:
+            if tag in run.tags:
+                # run_info = {
+                #     "id": run.id,
+                #     "name": run.name,
+                #     "state": run.state,
+                #     "config": run.config,
+                #     "summary": run.summary,
+                #     "created_at": run.created_at,
+                # }
+                # run_data.append(run_info)   
+                run_data.append(run)   
+        self.runs = run_data
         return self.runs
 
     def send_to_wandb(self, fig, title):
@@ -62,42 +86,6 @@ class DataAnalyzer:
         y_label: str = None,
         x_ticks_by_data: bool = False,
     ):
-        """Visualize a dataframe with this form. Here, Temperature is the x-axis, Rating is the y-axis, and Stockfish Skill Level is the group key.:
-
-        stockfish_groupby = "Stockfish Skill Level" # Key for the temperature group
-        sample_data = [
-            {"Temperature": 0.3, stockfish_groupby: "0", "Rating": 1000},
-            {"Temperature": 0.3, stockfish_groupby: "1", "Rating": 1200},
-            {"Temperature": 0.3, stockfish_groupby: "2", "Rating": 1400},
-            {"Temperature": 0.2, stockfish_groupby: "0", "Rating": 1100},
-            {"Temperature": 0.2, stockfish_groupby: "1", "Rating": 1300},
-            {"Temperature": 0.2, stockfish_groupby: "2", "Rating": 1500},
-            {"Temperature": 0.1, stockfish_groupby: "0", "Rating": 1200},
-            {"Temperature": 0.1, stockfish_groupby: "1", "Rating": 1400},
-            {"Temperature": 0.1, stockfish_groupby: "2", "Rating": 1600},
-        ]
-
-        # add noise to data for error bars
-        data = pd.DataFrame.from_dict(
-            sum(
-                [
-                    [
-                        {
-                            "Temperature": d["Temperature"],
-                            stockfish_groupby: d[stockfish_groupby],
-                            "Rating": d["Rating"] + 100 * np.random.randn(),
-                        }
-                        for d in sample_data
-                    ]
-                    for _ in range(3)
-                ],
-                [],
-            )
-        )
-
-        visualize_lineplot_groupby("Chess Ratings of NanoGPT across Temperature", "Temperature", "Rating", stockfish_groupby, data, x_ticks_by_data=True)
-
-        """
         groups = data[group_key].unique()
         palette = sns.color_palette(self.color_scheme, n_colors=len(groups))
         color_dict = {skill_level: color for skill_level, color in zip(groups, palette)}
@@ -127,3 +115,15 @@ class DataAnalyzer:
                 self.send_to_wandb(fig, title)
             else:
                 plt.savefig(f"{title}.png")
+                
+
+if __name__ == "__main__":
+    wandb.login(os.getenv("WANDB_API_KEY"))
+    entity = "lad"
+    project = "llm-tests"
+    tag = "prompt_difficulty"
+    sed_llm_analyzer = DataAnalyzer(entity, project)
+    
+    runs_with_tag = sed_llm_analyzer.get_runs_by_tag(tag)
+    for run in runs_with_tag:
+        print(f"Run ID: {run.id}, Name: {run.name}, State: {run.state}")

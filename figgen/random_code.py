@@ -1,21 +1,16 @@
-# %%
 import os
 import random
-
-os.environ["DISPLAY"] = ""
-
 import csv
 from collections import defaultdict
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import seaborn as sns
-from wandb.apis import PublicApi
-from wandb.apis.public.artifacts import ArtifactType
-from wandb.sdk import Artifact
-
+import wandb
+import pandas as pd
+from datetime import datetime, timedelta
 from figgen import DataAnalyzer
+import wandb
 
 
 class TranscendenceDataAnalyzer(DataAnalyzer):
@@ -62,13 +57,9 @@ class TranscendenceDataAnalyzer(DataAnalyzer):
             print(df)
             return df
 
-
-# %%
-import pandas as pd
-
-if __name__ == "__main__":
+def process_wandb_data():
     analyzer = TranscendenceDataAnalyzer(
-        wandb_entity="project-eval", wandb_project="Elo-Testing"
+        wandb_entity="lad", wandb_projects=""
     )
 
     # table = analyzer.get_table("r5gi54js")
@@ -149,3 +140,47 @@ if __name__ == "__main__":
         [],
     )
     temperature_sampling_experiment(groupby, y_label, sample_data)
+    
+def pull_projects_within_num_days(days_ago=30):
+    """
+    fetches projects from the specified entity that were created within the last `days_ago` days.
+    """
+    api = wandb.Api()
+    entity = 'lad'
+    
+    # Define a time range for filtering (e.g., runs from the last 30 days)
+    time_threshold = datetime.now() - timedelta(days=days_ago)
+    # List to store unique project names that meet the criteria
+    project_names = set()
+    # Fetch runs from the entity with filtering
+    runs = api.runs(path=entity, filters={"created_at": {"$gte": time_threshold.isoformat()}})
+
+    # Collect unique projects based on filtered runs
+    for run in runs:
+        project_names.add(run.project)
+
+    # Output the projects with runs in the specified time range
+    print(f"Projects with runs in the last {days_ago} days:")
+    projects = list(project_names)
+    for project_name in projects:
+        print(f" - {project_name}")
+
+    # Replace these with your specific values
+    entity = "lad"
+    project = "llm-tests"
+    run_id = "pm5qhk2i"
+
+    # Access the run
+    run = api.run(f"{entity}/{project}/{run_id}")
+    # Now you can access various aspects of the run
+    # For example, to get the run's summary metrics:
+    summary = run.summary
+    # To get the run's config:
+    config = run.config
+    # To get the history of the run:
+    history = run.history()
+
+    # Print some data
+    print(f"Run name: {run.name}")
+    print(f"Summary: {summary}")
+    print(f"Config: {config}")
