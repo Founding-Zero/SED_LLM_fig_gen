@@ -76,5 +76,5 @@ if __name__ == "__main__":
     if cfg.plotting:  
         from figgen.visualize import plot_principal_principal
         df_dict, group_names = process_dataframe(cfg)
-        plot_principal_principal(df_dict, x_col=cfg.axis, y_col=cfg.metric, groups=group_names, title='principal_return_vs_episode')
+        plot_principal_principal(df_dict, x_col=cfg.axis, y_col=cfg.metric, groups=group_names, title='Principal Return vs Episode')
 
