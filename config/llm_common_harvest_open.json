@@ -1,0 +1,13 @@
+{
+    "pulling_data": false,
+    "plotting": true,
+    "entity": "lad",
+    "project": "logger_testing",
+    "tag": "hello",
+    "run_ids": ["pur1h5kj"],
+    "env": "commons_harvest_open",
+    "method": "LLM",
+    "axis": "principal_final/principal_episode",
+    "metric": "principal_final/returns",
+    "prefixes": ["combined_val_train", "principal_final"]
+}
