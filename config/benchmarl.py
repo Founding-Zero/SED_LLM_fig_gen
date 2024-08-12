@@ -6,7 +6,24 @@ import seaborn as sns
 
 from figgen import DataAnalyzer
 
+# title = y_col.split("/")[1] + ' vs ' + x_col.split("/")[1]
 
+# data1 = {
+#     'principal_final/principal_episode': [1.0, 2.0, 3.0, 4.0, 5.0],
+#     'principal_final/returns': [14.628572, 16.542858, 35.371384, 45.371342, 43.728565]
+# }
+# data2 = {
+#     'principal_final/principal_episode': [1.0, 2.0, 3.0, 4.0, 5.0],
+#     'principal_final/returns': [16.628572, 23.542858, 25.371384, 42.371342, 39.728565]
+# }
+# data3 = {
+#     'principal_final/principal_episode': [1.0, 2.0, 3.0, 4.0, 5.0],
+#     'principal_final/returns': [17.628572, 26.542858, 29.371384, 35.371342, 50.728565]
+# }
+# df1 = pd.DataFrame(data1)
+# df2 = pd.DataFrame(data2)
+# df3 = pd.DataFrame(data3)
+# desired_data = pd.concat([df1, df2, df3])
 class BenchMARLDataAnalyzer(DataAnalyzer):
     def fetch_and_process_sigma_data(self, data_header):
         self.get_runs()

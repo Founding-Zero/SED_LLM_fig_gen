@@ -1,11 +1,12 @@
 import os
 import tempfile
 from collections import defaultdict
-
+import pickle
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import wandb
+from tqdm import tqdm
 from dotenv import load_dotenv
 
 
@@ -21,7 +22,7 @@ class DataAnalyzer:
         self.wandb_entity = wandb_entity
         self.wandb_project = wandb_projects
         self.api_key = os.getenv("WANDB_API_KEY")
-        self.api = wandb.Api()
+        self.api = wandb.Api(timeout=90)
         self.histories = {}
         self.color_scheme = color_scheme
         self.export_to_wandb = export_to_wandb
@@ -47,8 +48,11 @@ class DataAnalyzer:
                 os.unlink(fig_path)
 
     def set_histories(self):
-        for run in self.runs:
-            self.histories[run.id] = run.history()
+        for run in tqdm(self.runs, desc="Processing Runs", unit="run"):
+            # if int(run.name.split("-")[-1]) > 159:
+            self.histories[run.id] = run.scan_history()
+            # with open(f"dataframe_{run.name}.pkl", "wb") as outfile: 
+            #     pickle.dump(self.histories[run.id], outfile)      
         return self.histories
 
     def visualize_lineplot_groupby(

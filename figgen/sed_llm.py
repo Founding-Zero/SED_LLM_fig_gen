@@ -58,7 +58,12 @@ class SED_DataAnalyzer(DataAnalyzer):
 
     def pull_run_data(self, cfg: Config):
         self.set_runs(run_ids=cfg.run_ids)
-        self.set_histories()
+        temp_runs_list = []
+        for run in self.runs:
+            if int(run.name.split("-")[-1]) > 126:
+                temp_runs_list.append(run)
+        self.runs = temp_runs_list
+        # self.set_histories()
 
     def pull_and_store_wandb_data(self, cfg: Config):
         """
@@ -66,20 +71,23 @@ class SED_DataAnalyzer(DataAnalyzer):
         """
         self.pull_run_data(cfg)
         for run in self.runs:
+            if os.path.exists(f'figgen/pulled_data/{run.name}') and os.path.isdir(f'figgen/pulled_data/{run.name}'):
+                continue
             os.mkdir(f'figgen/pulled_data/{run.name}')
             with open(f'figgen/pulled_data/{run.name}/config.json', 'w') as json_file:
                 json.dump(run.config, json_file, indent=4)
                 
-            history_df = self.histories[run.id]
-            # relevant_headers = []
-            # prefixes = cfg.prefixes
-            # for column in history_df.columns:
-            #     if column.startswith(tuple(prefixes)):
-            #         relevant_headers.append(column)
-            csv_file_path = f'figgen/pulled_data/{run.name}/csv_dataframe.csv'
-            # history_df[relevant_headers].to_csv(csv_file_path, index=False)
-            history_df.to_csv(csv_file_path, index=True)
-            # self.csv_paths.append(csv_file_path)
+            # history_list = list(self.histories[run.id])
+            # history_df = pd.DataFrame(history_list)
+            # # relevant_headers = []
+            # # prefixes = cfg.prefixes
+            # # for column in history_df.columns:
+            # #     if column.startswith(tuple(prefixes)):
+            # #         relevant_headers.append(column)
+            # csv_file_path = f'figgen/pulled_data/{run.name}/csv_dataframe.csv'
+            # # history_df[relevant_headers].to_csv(csv_file_path, index=False)
+            # history_df.to_csv(csv_file_path, index=True)
+            # # self.csv_paths.append(csv_file_path)
    
     
 def process_dataframe(cfg: Config):
@@ -88,6 +96,8 @@ def process_dataframe(cfg: Config):
         config_jsons = []
         dfs = []
         for run in os.listdir("figgen/pulled_data"):
+            # if int(run.split('-')[-1]) > 197:
+            #     continue
             item_path = os.path.join("figgen/pulled_data", run)
             if os.path.isdir(item_path):
                 
@@ -102,6 +112,12 @@ def process_dataframe(cfg: Config):
                 if os.path.exists(csv_file_path):
                     df = pd.read_csv(csv_file_path)
                     df.dropna(how='all', inplace=True)
+                    if config_json['principal'] == 'LLM' or config_json['principal'] == 'Random':
+                        df.rename(columns={f'{run} - principal_final/returns': 'principal_final/returns'}, inplace=True)
+                    if config_json['principal'] == 'AID':
+                        df.rename(columns={f'{run} - validation/game 0 mean return': 'validation/game 0 mean return'}, inplace=True)
+                    if config_json['principal'] == 'Dual-RL':
+                        df.rename(columns={f'{run} - principal_final//game 0 principal return': 'principal_final//game 0 principal return'}, inplace=True)
                     dfs.append(df)
                         
         return config_jsons, dfs
@@ -110,6 +126,9 @@ def process_dataframe(cfg: Config):
     def group_df_objects(json_list, df_list):
         def get_cfg_key(obj):
             # Create a new dictionary without the 'seed' field
+            # if obj['principal'] == 'Random':
+            #     return json.dumps({k: v for k, v in obj.items()}, sort_keys=True)
+            # else:
             return json.dumps({k: v for k, v in obj.items() if k != 'seed'}, sort_keys=True)
 
         groups = defaultdict(list)
@@ -128,10 +147,16 @@ def process_dataframe(cfg: Config):
     group_names = []
     for conf, df_list in grouped.items():
         conf = json.loads(conf)
+        # if conf['principal'] == 'Random':
         if conf['principal'] == 'LLM':
-            group_name = f"{conf['env_name']}_{conf['principal']}_{conf['llm_prompt_style']}"
-        else:
-            group_name = f"{conf['env_name']}_{conf['principal']}"
+            if conf['temperature'] != 0.01:
+                continue
+            group_name = f"{conf['env_name']}_vin3_{conf['principal']}_vin3_ps_{conf['llm_prompt_style']}"
+        elif conf['principal'] == 'Random':
+            # group_name = f"{conf['env_name']}_{conf['principal']}_{conf['seed']}"
+            group_name = f"{conf['env_name']}_vin3_{conf['principal']}"
+        else: # Dual-RL and AID
+            group_name = f"{conf['env_name']}_vin3_{conf['principal']}_vin3_{conf['principal_lr']}"
         
         combined_df = pd.concat(df_list)
         df_dict[group_name] = combined_df
