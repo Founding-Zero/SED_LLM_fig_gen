@@ -47,17 +47,18 @@ def setup_experiment():
 
 @dataclass
 class Config:
-    pulling_data: bool = False
-    plotting: bool = False
+    pull_configs: bool = False # Toggle to true to pull data from wandb
+    pulling_data: bool = False # Toggle to true to pull data from wandb
+    plotting: bool = False # Toggle to true to plot data
     entity: str = ""
     project: str = ""
-    tag: str = ""
-    run_ids: List[str] = field(default_factory=lambda: [""])
-    env: str = ""
-    method: str = ""
+    tag: str = "" # Tag to filter runs by
+    run_ids: List[str] = field(default_factory=lambda: None) # List of run ids to pull data from or None to pull all runs from the project
+    methods: List[str] = field(default_factory=lambda: ["LLM", "Random", "Dual-RL", "AID"])
     axis: str = "_step"
     metric: str = ""
-    prefixes: List[str] = field(default_factory=lambda: [""])
+    metrics_by_method: List[str] = field(default_factory=lambda: [""])
+    custom_palette: List[str] = field(default_factory=lambda: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"])
 
 
 if __name__ == "__main__":
@@ -76,5 +77,5 @@ if __name__ == "__main__":
     if cfg.plotting:  
         from figgen.visualize import plot_principal_principal
         df_dict, group_names = process_dataframe(cfg)
-        plot_principal_principal(df_dict, x_col=cfg.axis, y_col=cfg.metric, groups_list=group_names, title='Principal Return vs Training/Validation Steps')
+        plot_principal_principal(df_dict, x_col=cfg.axis, y_col=cfg.metric, groups_list=group_names, cfg=cfg)
 

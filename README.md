@@ -1,15 +1,15 @@
-# figgen
-
-## TODO
-
-this is empty at the moment
+# AI Principal Figgen
 
 ## Installation
 
 ```
 make install
+
+mkdir figgen/pulled_data
+mkdir output_plots
 ```
 
-## Usage
-
-TODO @ben please fill this out
+## Run
+```
+Run with debugger. launch.json is already configured.
+```

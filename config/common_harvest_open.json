@@ -1,0 +1,22 @@
+{
+    "pull_configs": true,
+    "pulling_data": true,
+    "plotting": false,
+    "entity": "lad",
+    "project": "llm-tests",
+    "tag": null,
+    "run_ids": null,
+    "methods": ["LLM", "Random", "Dual-RL", "AID"], 
+    "axis": "combined_val_train/episode",
+    "metric": "principal_final/returns",
+    "metrics_by_method": ["principal_final/returns", "principal_final/game 0 principal return"],
+    "custom_palette": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+                        "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+                        "#393b79", "#5254a3", "#6b6ecf", "#9c9ede", "#637939",
+                        "#8ca252", "#b5cf6b", "#cedb9c", "#8c6d31", "#bd9e39",
+                        "#e7ba52", "#e7cb94", "#843c39", "#ad494a", "#d6616b",
+                        "#e7969c", "#7b4173", "#a55194", "#ce6dbd", "#de9ed6",
+                        "#17becf", "#1f77b4", "#ff9896", "#9467bd", "#c5b0d5",
+                        "#ffbb78", "#c49c94", "#f7b6d2", "#c7c7c7", "#dbdb8d"
+                        ]
+}

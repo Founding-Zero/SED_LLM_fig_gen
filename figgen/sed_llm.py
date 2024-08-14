@@ -3,11 +3,7 @@ import random
 import csv
 import tempfile
 from collections import defaultdict
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import wandb
 import dataclasses
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -21,96 +17,68 @@ from collections import defaultdict
 from dataclasses import dataclass, field, make_dataclass
 from importlib import metadata as importlib_metadata
 from pathlib import Path
-from eztils import abspath, datestr, setup_path
-from eztils.argparser import HfArgumentParser, update_dataclass_defaults
 from rich import print
-
+from tqdm import tqdm
 from figgen.data_analyzer import DataAnalyzer
-from figgen.visualize import plot_principal_principal
 from figgen import Config
 
-class SED_DataAnalyzer(DataAnalyzer):
-    # def __init__(self, wandb_entity, wandb_project):
-    #     super().__init__(wandb_entity, wandb_project)
-    #     self.csv_paths = []
-        
-    def get_runs_by_tag(self, tag):
+class SED_DataAnalyzer(DataAnalyzer):        
+    def get_runs_filtered_by_tag(self, cfg: Config):
         # Query runs from the specified entity and project
-        runs = self.api.runs(f"{self.wandb_entity}/{self.wandb_project}")
-
+        # runs = self.api.runs(f"{self.wandb_entity}/{self.wandb_project}")
+        runs = self.set_runs(run_ids=cfg.run_ids)
         # Collect run information with the specified tag
         run_data = []
         for run in runs:
-            if tag in run.tags:  
-                # run_info = {
-                #     "id": run.id,
-                #     "name": run.name,
-                #     "state": run.state,
-                #     "created_at": run.created_at,
-                #     "summary": run.summary,
-                #     "config": run.json_config,
-                # }
-                # run_data.append(run_info)   
+            if cfg.tag in run.tags:    
                 run_data.append(run)   
-                # print(f"Run ID: {run.id}, Name: {run.name}, State: {run.state}")
         self.runs = run_data
         return self.runs
 
-    def pull_run_data(self, cfg: Config):
-        self.set_runs(run_ids=cfg.run_ids)
-        # temp_runs_list = []
-        # for run in self.runs:
-        #     if int(run.name.split("-")[-1]) > 126:
-        #         temp_runs_list.append(run)
-        # self.runs = temp_runs_list
-        # self.set_histories()
-
     def pull_and_store_wandb_data(self, cfg: Config):
         """
-        function to pull all wandb data
+        function to pull all wandb run data and config files for the runs
         """
-        self.pull_run_data(cfg)
-        for run in self.runs:
-            if os.path.exists(f'figgen/pulled_data/{run.name}') and os.path.isdir(f'figgen/pulled_data/{run.name}'):
-                continue
-            os.mkdir(f'figgen/pulled_data/{run.name}')
-            with open(f'figgen/pulled_data/{run.name}/config.json', 'w') as json_file:
-                json.dump(run.config, json_file, indent=4)
+        # self.pull_run_data(cfg)
+        # self.set_runs(run_ids=cfg.run_ids)
+        # pull the runs:
+        self.get_runs_filtered_by_tag(cfg=cfg)
+        for run in tqdm(self.runs):
+            # create run file (named by run.name) and store the config file
+            if cfg.pull_configs:
+                if os.path.exists(f'figgen/pulled_data/{run.name}') and os.path.isdir(f'figgen/pulled_data/{run.name}'):
+                    continue
+                os.mkdir(f'figgen/pulled_data/{run.name}')
+                with open(f'figgen/pulled_data/{run.name}/config.json', 'w') as json_file:
+                    json.dump(run.config, json_file, indent=4)
+            
+            # pull the principal return plot data and store in CSVs
             if 'LLM' in run.tags or 'random' in run.tags:
-                keys = ['principal_final/returns', 'principal_final/principal_step']
+                keys = [cfg.metrics_by_method[0], 'principal_final/principal_step']
             elif 'aid' in run.tags or 'dual_rl' in run.tags: 
-                keys = ['principal_final/game 0 principal return', 'principal_final/principal_step']
+                keys = [cfg.metrics_by_method[1], 'principal_final/principal_step']
 
             axis_multiplier = 2 if 'aid' in run.tags else 20
             all_history = []
             for row in run.scan_history(keys=keys):
                 all_history.append(row)
             history_df = pd.DataFrame(all_history)  
-            history_df['principal_final/principal_step'] *= axis_multiplier
+            if cfg.axis == 'combined_val_train/episode':
+                history_df['principal_final/principal_step'] *= axis_multiplier
             csv_file_path = f'figgen/pulled_data/{run.name}/csv_dataframe.csv'
             history_df.to_csv(csv_file_path, index=False)
-            
-            # history_list = list(self.histories[run.id])
-            # history_df = pd.DataFrame(history_list)
-            # # relevant_headers = []
-            # # prefixes = cfg.prefixes
-            # # for column in history_df.columns:
-            # #     if column.startswith(tuple(prefixes)):
-            # #         relevant_headers.append(column)
-            # csv_file_path = f'figgen/pulled_data/{run.name}/csv_dataframe.csv'
-            # # history_df[relevant_headers].to_csv(csv_file_path, index=False)
-            # history_df.to_csv(csv_file_path, index=True)
-            # # self.csv_paths.append(csv_file_path)
    
     
 def process_dataframe(cfg: Config):
-    # pulling the data and configs per run
+    """
+    pulling the data and configs per run and transform them into the correct format for plotting
+    """
+    
+    # pull the config jsons and dataframes
     def pull_config_jsons():
         config_jsons = []
         dfs = []
-        for run in os.listdir("figgen/pulled_data"):
-            # if int(run.split('-')[-1]) > 197:
-            #     continue
+        for run in tqdm(os.listdir("figgen/pulled_data")):
             item_path = os.path.join("figgen/pulled_data", run)
             if os.path.isdir(item_path):
                 
@@ -125,12 +93,6 @@ def process_dataframe(cfg: Config):
                 if os.path.exists(csv_file_path):
                     df = pd.read_csv(csv_file_path)
                     df.dropna(how='all', inplace=True)
-                    # if config_json['principal'] == 'LLM' or config_json['principal'] == 'Random':
-                    #     df.rename(columns={f'{run} - principal_final/returns': 'principal_final/returns'}, inplace=True)
-                    # if config_json['principal'] == 'AID':
-                    #     df.rename(columns={f'{run} - validation/game 0 mean return': 'validation/game 0 mean return'}, inplace=True)
-                    # if config_json['principal'] == 'Dual-RL':
-                    #     df.rename(columns={f'{run} - principal_final//game 0 principal return': 'principal_final//game 0 principal return'}, inplace=True)
                     dfs.append(df)
                         
         return config_jsons, dfs
@@ -138,11 +100,11 @@ def process_dataframe(cfg: Config):
     # group the dataframes by the config ignoring seed
     def group_df_objects(json_list, df_list):
         def get_cfg_key(obj):
-            # Create a new dictionary without the 'seed' field
-            # if obj['principal'] == 'Random':
-            #     return json.dumps({k: v for k, v in obj.items()}, sort_keys=True)
-            # else:
-            return json.dumps({k: v for k, v in obj.items() if k != 'seed'}, sort_keys=True)
+            if obj['principal'] == 'Random':
+                return json.dumps({k: v for k, v in obj.items()}, sort_keys=True)
+            else:
+                # Create a new dictionary without the 'seed' field for every other method besides Random
+                return json.dumps({k: v for k, v in obj.items() if k != 'seed'}, sort_keys=True)
 
         groups = defaultdict(list)
         for i in range(len(json_list)):
@@ -159,26 +121,19 @@ def process_dataframe(cfg: Config):
     df_dict = {}
     group_names = []
     for conf, df_list in grouped.items():
-        conf = json.loads(conf)
-        # if conf['principal'] == 'Random':
+        conf = json.loads(conf) # json string to python dict
         if conf['principal'] == 'LLM':
-            if conf['temperature'] != 0.01:
-                continue
-            group_name = f"{conf['env_name']}_vin3_{conf['principal']}_vin3_ps_{conf['llm_prompt_style']}"
+            # group_name = f"{conf['env_name']}_{conf['principal']}_ps_{conf['temperature']}"
+            group_name = f"{conf['env_name']}_{conf['principal']}_ps_{conf['llm_prompt_style']}"
         elif conf['principal'] == 'Random':
             # group_name = f"{conf['env_name']}_{conf['principal']}_{conf['seed']}"
-            group_name = f"{conf['env_name']}_vin3_{conf['principal']}"
+            group_name = f"{conf['env_name']}_{conf['principal']}"
         else: # Dual-RL and AID
-            group_name = f"{conf['env_name']}_vin3_{conf['principal']}_vin3_{conf['principal_lr']}"
+            group_name = f"{conf['env_name']}_{conf['principal']}_{conf['principal_lr']}"
         
-        combined_df = pd.concat(df_list)
+        combined_df = pd.concat(df_list) # combine the dataframes to get std
         df_dict[group_name] = combined_df
         group_names.append(group_name)
         
-    return df_dict, group_names
-    plot_principal_principal(df_dict, x_col=cfg.axis, y_col=cfg.metric, groups=group_names)
-    
-    # with open(f"dataframe.pkl", "wb") as outfile: 
-    #     pickle.dump(df, outfile)
-    
+    return df_dict, group_names    
     

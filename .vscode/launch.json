@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "figgen/__init__.py",
       "console": "integratedTerminal",
-      "args": "--config $PWD/config/llm_common_harvest_open.json",
+      "args": "--config $PWD/config/common_harvest_open.json",
       "justMyCode": false
     }
   ]
