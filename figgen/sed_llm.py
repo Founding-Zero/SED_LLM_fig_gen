@@ -58,11 +58,11 @@ class SED_DataAnalyzer(DataAnalyzer):
 
     def pull_run_data(self, cfg: Config):
         self.set_runs(run_ids=cfg.run_ids)
-        temp_runs_list = []
-        for run in self.runs:
-            if int(run.name.split("-")[-1]) > 126:
-                temp_runs_list.append(run)
-        self.runs = temp_runs_list
+        # temp_runs_list = []
+        # for run in self.runs:
+        #     if int(run.name.split("-")[-1]) > 126:
+        #         temp_runs_list.append(run)
+        # self.runs = temp_runs_list
         # self.set_histories()
 
     def pull_and_store_wandb_data(self, cfg: Config):
@@ -76,7 +76,20 @@ class SED_DataAnalyzer(DataAnalyzer):
             os.mkdir(f'figgen/pulled_data/{run.name}')
             with open(f'figgen/pulled_data/{run.name}/config.json', 'w') as json_file:
                 json.dump(run.config, json_file, indent=4)
-                
+            if 'LLM' in run.tags or 'random' in run.tags:
+                keys = ['principal_final/returns', 'principal_final/principal_step']
+            elif 'aid' in run.tags or 'dual_rl' in run.tags: 
+                keys = ['principal_final/game 0 principal return', 'principal_final/principal_step']
+
+            axis_multiplier = 2 if 'aid' in run.tags else 20
+            all_history = []
+            for row in run.scan_history(keys=keys):
+                all_history.append(row)
+            history_df = pd.DataFrame(all_history)  
+            history_df['principal_final/principal_step'] *= axis_multiplier
+            csv_file_path = f'figgen/pulled_data/{run.name}/csv_dataframe.csv'
+            history_df.to_csv(csv_file_path, index=False)
+            
             # history_list = list(self.histories[run.id])
             # history_df = pd.DataFrame(history_list)
             # # relevant_headers = []
@@ -112,12 +125,12 @@ def process_dataframe(cfg: Config):
                 if os.path.exists(csv_file_path):
                     df = pd.read_csv(csv_file_path)
                     df.dropna(how='all', inplace=True)
-                    if config_json['principal'] == 'LLM' or config_json['principal'] == 'Random':
-                        df.rename(columns={f'{run} - principal_final/returns': 'principal_final/returns'}, inplace=True)
-                    if config_json['principal'] == 'AID':
-                        df.rename(columns={f'{run} - validation/game 0 mean return': 'validation/game 0 mean return'}, inplace=True)
-                    if config_json['principal'] == 'Dual-RL':
-                        df.rename(columns={f'{run} - principal_final//game 0 principal return': 'principal_final//game 0 principal return'}, inplace=True)
+                    # if config_json['principal'] == 'LLM' or config_json['principal'] == 'Random':
+                    #     df.rename(columns={f'{run} - principal_final/returns': 'principal_final/returns'}, inplace=True)
+                    # if config_json['principal'] == 'AID':
+                    #     df.rename(columns={f'{run} - validation/game 0 mean return': 'validation/game 0 mean return'}, inplace=True)
+                    # if config_json['principal'] == 'Dual-RL':
+                    #     df.rename(columns={f'{run} - principal_final//game 0 principal return': 'principal_final//game 0 principal return'}, inplace=True)
                     dfs.append(df)
                         
         return config_jsons, dfs

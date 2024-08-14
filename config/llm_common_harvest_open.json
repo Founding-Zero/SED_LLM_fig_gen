@@ -1,10 +1,10 @@
 {
-    "pulling_data": false,
-    "plotting": true,
+    "pulling_data": true,
+    "plotting": false,
     "entity": "lad",
     "project": "llm-tests",
     "tag": "",
-    "run_ids": null,
+    "run_ids": ["vrbhbiam"],
     "env": "commons_harvest_open",
     "axis": "principal_final/principal_episode",
     "metric": "principal_final/returns",

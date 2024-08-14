@@ -52,7 +52,7 @@ class Config:
     entity: str = ""
     project: str = ""
     tag: str = ""
-    run_ids: List[str] = field(default_factory=lambda: None)
+    run_ids: List[str] = field(default_factory=lambda: [""])
     env: str = ""
     method: str = ""
     axis: str = "_step"

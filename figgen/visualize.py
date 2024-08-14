@@ -126,7 +126,7 @@ def estimate_time_to_threshold(combined_df_dict: dict, x_col: str, y_col: str, g
                 print(f"{group_name} Average steps to reach threshold {threshold}: {avg_steps:.2f}")
 
 
-def plot_principal_principal_line(combined_df_dict: dict, x_col: str, y_col: str, groups_list: list, title: str = None):
+def plot_principal_principal(combined_df_dict: dict, x_col: str, y_col: str, groups_list: list, title: str = None):
     """
     Plots one column against another from the given transformed DataFrame using Seaborn.
 
