@@ -28,11 +28,12 @@ class SED_DataAnalyzer(DataAnalyzer):
         # runs = self.api.runs(f"{self.wandb_entity}/{self.wandb_project}")
         runs = self.set_runs(run_ids=cfg.run_ids)
         # Collect run information with the specified tag
-        run_data = []
-        for run in runs:
-            if cfg.tag in run.tags:    
-                run_data.append(run)   
-        self.runs = run_data
+        if cfg.tags is not None:
+            run_data = []
+            for run in runs:
+                if run.tags[0] in cfg.tags:    
+                    run_data.append(run)   
+            self.runs = run_data
         return self.runs
 
     def pull_and_store_wandb_data(self, cfg: Config):
@@ -44,18 +45,20 @@ class SED_DataAnalyzer(DataAnalyzer):
         # pull the runs:
         self.get_runs_filtered_by_tag(cfg=cfg)
         for run in tqdm(self.runs):
+            if run.name == "balmy-eon-2":
+                pass
             # create run file (named by run.name) and store the config file
             if cfg.pull_configs:
-                if os.path.exists(f'figgen/pulled_data/{run.name}') and os.path.isdir(f'figgen/pulled_data/{run.name}'):
+                if os.path.exists(f'wandb/pulled_data/{run.name}') and os.path.isdir(f'wandb/pulled_data/{run.name}'):
                     continue
-                os.mkdir(f'figgen/pulled_data/{run.name}')
-                with open(f'figgen/pulled_data/{run.name}/config.json', 'w') as json_file:
+                os.mkdir(f'wandb/pulled_data/{run.name}')
+                with open(f'wandb/pulled_data/{run.name}/config.json', 'w') as json_file:
                     json.dump(run.config, json_file, indent=4)
             
             # pull the principal return plot data and store in CSVs
             if 'LLM' in run.tags or 'random' in run.tags:
                 keys = [cfg.metrics_by_method[0], 'principal_final/principal_step']
-            elif 'aid' in run.tags or 'dual_rl' in run.tags: 
+            elif 'aid' in run.tags or 'dual-rl' in run.tags: 
                 keys = [cfg.metrics_by_method[1], 'principal_final/principal_step']
 
             axis_multiplier = 2 if 'aid' in run.tags else 20
@@ -65,7 +68,7 @@ class SED_DataAnalyzer(DataAnalyzer):
             history_df = pd.DataFrame(all_history)  
             if cfg.axis == 'combined_val_train/episode':
                 history_df['principal_final/principal_step'] *= axis_multiplier
-            csv_file_path = f'figgen/pulled_data/{run.name}/csv_dataframe.csv'
+            csv_file_path = f'wandb/pulled_data/{run.name}/csv_dataframe.csv'
             history_df.to_csv(csv_file_path, index=False)
    
     
@@ -78,8 +81,8 @@ def process_dataframe(cfg: Config):
     def pull_config_jsons():
         config_jsons = []
         dfs = []
-        for run in tqdm(os.listdir("figgen/pulled_data")):
-            item_path = os.path.join("figgen/pulled_data", run)
+        for run in tqdm(os.listdir("wandb/pulled_data")):
+            item_path = os.path.join("wandb/pulled_data", run)
             if os.path.isdir(item_path):
                 
                 config_file_path = os.path.join(item_path, 'config.json')

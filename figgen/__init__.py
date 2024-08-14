@@ -47,12 +47,12 @@ def setup_experiment():
 
 @dataclass
 class Config:
-    pull_configs: bool = False # Toggle to true to pull data from wandb
+    pull_configs: bool = False # Toggle to true to pull the configs from wandb (only needs to be done once)
     pulling_data: bool = False # Toggle to true to pull data from wandb
     plotting: bool = False # Toggle to true to plot data
     entity: str = ""
     project: str = ""
-    tag: str = "" # Tag to filter runs by
+    tags: List[str] = field(default_factory=lambda: None) # Tags to filter runs by
     run_ids: List[str] = field(default_factory=lambda: None) # List of run ids to pull data from or None to pull all runs from the project
     methods: List[str] = field(default_factory=lambda: ["LLM", "Random", "Dual-RL", "AID"])
     axis: str = "_step"
@@ -77,5 +77,5 @@ if __name__ == "__main__":
     if cfg.plotting:  
         from figgen.visualize import plot_principal_principal
         df_dict, group_names = process_dataframe(cfg)
-        plot_principal_principal(df_dict, x_col=cfg.axis, y_col=cfg.metric, groups_list=group_names, cfg=cfg)
+        plot_principal_principal(df_dict, groups_list=group_names, cfg=cfg)
 
