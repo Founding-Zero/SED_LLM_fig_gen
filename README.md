@@ -9,7 +9,6 @@ source .venv/bin/activate.fish
 pip install -r requirements.txt
 pip install tqdm pandas python-dotenv rich seaborn matplotlib wandb
 
-mkdir wandb/pulled_data
 mkdir output_plots
 ```
 
