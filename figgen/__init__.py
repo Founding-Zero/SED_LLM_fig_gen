@@ -47,11 +47,13 @@ def setup_experiment():
 
 @dataclass
 class Config:
+    gridsearch: bool = False # Toggle to true to pull the configs from wandb (only needs to be done once)
     pull_configs: bool = False # Toggle to true to pull the configs from wandb (only needs to be done once)
     pulling_data: bool = False # Toggle to true to pull data from wandb
     plotting: bool = False # Toggle to true to plot data
+    clip_axis: bool = False # Toggle to plot with the x_axis clipped to so all line end at same point
     entity: str = ""
-    project: str = ""
+    project: List[str] = field(default_factory=lambda: ["llm-tests"]) # Tags to filter runs by
     tags: List[str] = field(default_factory=lambda: None) # Tags to filter runs by
     run_ids: List[str] = field(default_factory=lambda: None) # List of run ids to pull data from or None to pull all runs from the project
     methods: List[str] = field(default_factory=lambda: ["LLM", "Random", "Dual-RL", "AID"])
@@ -71,11 +73,15 @@ if __name__ == "__main__":
 
     from figgen.sed_llm import SED_DataAnalyzer, process_dataframe
     if cfg.pulling_data:
-        sed_llm_analyzer = SED_DataAnalyzer(cfg.entity, cfg.project)
-        sed_llm_analyzer.pull_and_store_wandb_data(cfg)
+        for proj in cfg.project:
+            sed_llm_analyzer = SED_DataAnalyzer(cfg.entity, proj)
+            sed_llm_analyzer.pull_and_store_wandb_data(cfg)
         
     if cfg.plotting:  
-        from figgen.visualize import plot_principal_principal
+        from figgen.visualize import plot_principal_principal, plot_principal_principal_hparams
         df_dict, group_names = process_dataframe(cfg)
-        plot_principal_principal(df_dict, groups_list=group_names, cfg=cfg)
+        if cfg.gridsearch:
+            plot_principal_principal_hparams(df_dict, groups_list=group_names, cfg=cfg)
+        else:
+            plot_principal_principal(df_dict, groups_list=group_names, cfg=cfg)
 

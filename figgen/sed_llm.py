@@ -111,7 +111,10 @@ def process_dataframe(cfg: Config):
 
         groups = defaultdict(list)
         for i in range(len(json_list)):
-            conf_key = get_cfg_key(json_list[i])
+            if cfg.gridsearch:
+                conf_key = get_cfg_key(json_list[i])
+            else:
+                conf_key = json_list[i]['principal']
             # append the associated dataframe instead of the config
             groups[conf_key].append(df_list[i])
     
@@ -124,16 +127,19 @@ def process_dataframe(cfg: Config):
     df_dict = {}
     group_names = []
     for conf, df_list in grouped.items():
-        conf = json.loads(conf) # json string to python dict
-        if conf['principal'] == 'LLM':
-            # group_name = f"{conf['env_name']}_{conf['principal']}_ps_{conf['temperature']}"
-            group_name = f"{conf['env_name']}_{conf['principal']}_ps_{conf['llm_prompt_style']}"
-        elif conf['principal'] == 'Random':
-            # group_name = f"{conf['env_name']}_{conf['principal']}_{conf['seed']}"
-            group_name = f"{conf['env_name']}_{conf['principal']}"
-        else: # Dual-RL and AID
-            group_name = f"{conf['env_name']}_{conf['principal']}_{conf['principal_lr']}"
-        
+        if cfg.gridsearch:
+            conf = json.loads(conf) # json string to python dict
+            if conf['principal'] == 'LLM':
+                # group_name = f"{conf['env_name']}_{conf['principal']}_ps_{conf['temperature']}"
+                group_name = f"{conf['env_name']}_{conf['principal']}_ps_{conf['llm_prompt_style']}"
+            elif conf['principal'] == 'Random':
+                # group_name = f"{conf['env_name']}_{conf['principal']}_{conf['seed']}"
+                group_name = f"{conf['env_name']}_{conf['principal']}"
+            else: # Dual-RL and AID
+                group_name = f"{conf['env_name']}_{conf['principal']}_{conf['principal_lr']}"
+        else:
+            group_name = conf
+            
         combined_df = pd.concat(df_list) # combine the dataframes to get std
         df_dict[group_name] = combined_df
         group_names.append(group_name)

@@ -1,15 +1,16 @@
 # *.png
 figgen/.env
+figgen/output_plots/
 runs
 config.json
 *.csv
 *.pkl
-*.png
+# *.png
 
 # Created by https://www.gitignore.io/api/osx,python,pycharm,windows,visualstudio,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=osx,python,pycharm,windows,visualstudio,visualstudiocode
 
-#wandb and associates
+wandb/
 .json*
 .png*
 ### OSX ###

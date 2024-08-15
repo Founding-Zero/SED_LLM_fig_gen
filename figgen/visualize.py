@@ -20,7 +20,7 @@ def format_number(num):
         return str(num)
     
 
-def plot_principal_principal(combined_df_dict: dict, groups_list: list, cfg: Config):
+def plot_principal_principal_hparams(combined_df_dict: dict, groups_list: list, cfg: Config):
     """
     Outputs 1 plot, 1 for each method to the output_plots directory.
 
@@ -55,7 +55,8 @@ def plot_principal_principal(combined_df_dict: dict, groups_list: list, cfg: Con
             # fig.subplots_adjust(left=0.05, right=0.85, top=0.85, bottom=0.15, wspace=0.2)
             # palette = sns.color_palette("viridis", len(groups))
             palette = cfg.custom_palette
-            
+            min_x_axis_limit = float("inf")
+
             for group_idx, group_name in enumerate(tqdm(groups, desc=f"Processing {parent_group} data")):
                 df = combined_df_dict[group_name]
                 df.rename(columns={"principal_final/principal_step": cfg.axis}, inplace=True)
@@ -73,6 +74,8 @@ def plot_principal_principal(combined_df_dict: dict, groups_list: list, cfg: Con
                 desired_data.dropna(how='all', inplace=True)
                 desired_data[x_col] *= 1000 # Convert to environment steps
                 
+                # set the limit for the x_axis as the minimum of the maximum value of the x_col and the current min_x_axis_limit
+                min_x_axis_limit = min(desired_data[x_col].max(), min_x_axis_limit)
                 # Extracting label_processed as a tuple
                 label_processed = group_name.split("_ps_")[-1] if parent_group == "LLM" else group_name.split("_")[-1]
 
@@ -103,19 +106,93 @@ def plot_principal_principal(combined_df_dict: dict, groups_list: list, cfg: Con
             axes.set_ylabel(y_col.capitalize(), fontsize="large")
             axes.set_xlabel("Environment Steps")
             axes.set_ylabel("Rewards")
-            if parent_group == "LLM":
-                axes.set_xlim(0, )
-            if parent_group == "Random":
-                axes.set_xlim(0, )
-            if parent_group == "AID":
-                axes.set_xlim(0, )
-            if parent_group == "Dual-RL":
-                axes.set_xlim(0, )
+            if cfg.clip_axis:
+                axes.set_xlim(0, min_x_axis_limit)
             # axes.set_xticks(desired_data[x_col])
             # axes.set_xticklabels(formatted_x_ticks, rotation=90)
             # axes.legend(title=Hparams, bbox_to_anchor=(1.05, 1), loc='upper left')
             axes.legend(title=Hparams, fontsize='small')
             axes.grid(True)
         
-        plt.savefig(f"output_plots/{parent_group}.png", dpi=300, bbox_inches='tight') 
+        if cfg.clip_axis:
+            output_file_name = "clipped_" + parent_group
+        else:
+            output_file_name = parent_group
+        plt.savefig(f"output_plots/{output_file_name}.png", dpi=300, bbox_inches='tight') 
         plt.close(fig)
+
+
+def plot_principal_principal(combined_df_dict: dict, groups_list: list, cfg: Config):
+    """
+    Outputs 1 plot that compares all principal methods.
+
+    Parameters:
+    - df (pd.DataFrame): dictionary of combined dataframes by groups.
+    - groups_list (list(str)): which groups to plot (ex: ['common_harvest_open_LLM_reveal_apples', 'common_harvest_open_aid_reveal_apples'])
+    - cfg (Config): configuration object containing the axis and metrics to plot.
+    """    
+    plt.rcParams.update({
+        "font.size": 25,
+        "text.usetex": True,
+        "text.latex.preamble": r"\usepackage{amsfonts}",
+        "font.family": "Computer Modern Serif",
+    })
+        
+    groups_list = list(set(groups_list))
+    # for parent_group, groups in outer_groups_dict.items():  
+    with sns.axes_style("darkgrid"):
+        fig, axes = plt.subplots(figsize=(12, 8))
+        plt.tight_layout()
+        # fig.subplots_adjust(left=0.05, right=0.85, top=0.85, bottom=0.15, wspace=0.2)
+        # palette = sns.color_palette("viridis", len(groups))
+        palette = cfg.custom_palette
+        min_x_axis_limit = float("inf")
+        
+        for group_idx, group_name in enumerate(tqdm(groups_list, desc=f"Processing data")):
+            df = combined_df_dict[group_name]
+            df.rename(columns={"principal_final/principal_step": cfg.axis}, inplace=True)
+            x_col = cfg.axis
+            if  "LLM" in group_name or "Random" in group_name:
+                y_col = cfg.metrics_by_method[0]
+            elif "AID" in group_name or "Dual-RL" in group_name:
+                y_col = cfg.metrics_by_method[1]
+                
+            if x_col not in df.columns or y_col not in df.columns:
+                raise ValueError("Specified columns are not in the DataFrame.")
+            desired_data = df[[x_col, y_col]]
+            desired_data.dropna(how='all', inplace=True)
+            desired_data[x_col] *= 1000 # Convert to environment steps
+            
+            # set the limit for the x_axis as the minimum of the maximum value of the x_col and the current min_x_axis_limit
+            min_x_axis_limit = min(desired_data[x_col].max(), min_x_axis_limit)
+            # Extracting label_processed as a tuple
+            label_processed = group_name
+                        
+            sns.lineplot(
+                data=desired_data,
+                x=x_col,
+                y=y_col,
+                estimator="mean",
+                errorbar=("ci", 95),
+                color=palette[group_idx],
+                label=label_processed,
+                ax=axes,
+            )
+            
+        axes.set_title(f"Principal Reward by Environment Steps", fontsize="large")
+        axes.set_xlabel(x_col.capitalize(), fontsize="large")
+        axes.set_ylabel(y_col.capitalize(), fontsize="large")
+        axes.set_xlabel("Environment Steps")
+        axes.set_ylabel("Rewards")
+        if cfg.clip_axis:
+            axes.set_xlim(0, min_x_axis_limit)
+            
+        axes.legend(title="Principal", fontsize='small')
+        axes.grid(True)
+    
+    if cfg.clip_axis:
+        output_file_name = "clipped_" + "compare_principal_methods"
+    else:
+        output_file_name = "compare_principal_methods"
+    plt.savefig(f"output_plots/{output_file_name}.png", dpi=300, bbox_inches='tight') 
+    plt.close(fig)
